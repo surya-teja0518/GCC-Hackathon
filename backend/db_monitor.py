@@ -8,6 +8,14 @@ logger = logging.getLogger("db_monitor")
 class DBMonitor:
     def __init__(self):
         self.pg_url = os.getenv("POSTGRES_URL") or os.getenv("DATABASE_URL")
+        # Azure Postgres parameters fallback
+        self.pghost = os.getenv("PGHOST")
+        self.pguser = os.getenv("PGUSER")
+        self.pgpassword = os.getenv("PGPASSWORD")
+        self.pgdatabase = os.getenv("PGDATABASE", "postgres")
+        self.pgport = os.getenv("PGPORT", "5432")
+        self.pgsslmode = os.getenv("PGSSLMODE", "require")
+        
         self.active_scenario = "LOCK_CONTENTION"  # Default scenario for demo
         self.last_poll_time = time.time()
         
@@ -23,10 +31,21 @@ class DBMonitor:
         self.last_poll_time = time.time()
         
         # Try real PostgreSQL if configured
-        if self.pg_url:
+        if self.pg_url or self.pghost:
             try:
                 import psycopg2
-                conn = psycopg2.connect(self.pg_url, connect_timeout=3)
+                if self.pg_url:
+                    conn = psycopg2.connect(self.pg_url, connect_timeout=3)
+                else:
+                    conn = psycopg2.connect(
+                        host=self.pghost,
+                        user=self.pguser,
+                        password=self.pgpassword,
+                        dbname=self.pgdatabase,
+                        port=self.pgport,
+                        sslmode=self.pgsslmode,
+                        connect_timeout=3
+                    )
                 cursor = conn.cursor()
                 
                 # Query active & blocked sessions

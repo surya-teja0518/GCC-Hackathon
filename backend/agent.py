@@ -66,6 +66,8 @@ class AgentEngine:
         self.rag_engine = rag_engine
         self.anthropic_key = os.getenv("ANTHROPIC_API_KEY")
         self.openai_key = os.getenv("OPENAI_API_KEY")
+        self.azure_foundry_endpoint = os.getenv("AZURE_FOUNDRY_ENDPOINT") or os.getenv("AZURE_OPENAI_ENDPOINT")
+        self.azure_foundry_key = os.getenv("AZURE_FOUNDRY_KEY") or os.getenv("AZURE_OPENAI_KEY")
 
     def diagnose_anomaly(self, anomaly_info, metrics_info):
         if not anomaly_info:
@@ -82,19 +84,40 @@ class AgentEngine:
         # Retrieve RAG context
         query = f"{anomaly_type} {anomaly_info.get('title', '')} {anomaly_info.get('target_table', '')}"
         relevant_docs = self.rag_engine.retrieve_relevant_docs(query)
+        prompt = f"Analyze this PostgreSQL anomaly: {json.dumps(anomaly_info)}. RAG context: {json.dumps([d['content'] for d in relevant_docs])}. Return valid JSON object with keys: root_cause (string), citations (string), remediation_steps (list of objects with step, title, sql)."
         
         # Attempt LLM API call if key configured
-        if self.anthropic_key or self.openai_key:
+        if self.anthropic_key or self.openai_key or (self.azure_foundry_endpoint and self.azure_foundry_key):
             try:
-                # If Anthropic API available
-                if self.anthropic_key:
-                    import requests
+                import requests
+                # 1. Azure AI Foundry / Azure OpenAI Endpoint
+                if self.azure_foundry_endpoint and self.azure_foundry_key:
+                    headers = {
+                        "api-key": self.azure_foundry_key,
+                        "content-type": "application/json"
+                    }
+                    payload = {
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": 0.2
+                    }
+                    url = self.azure_foundry_endpoint
+                    if "/chat/completions" not in url:
+                        url = f"{url.rstrip('/')}/chat/completions?api-version=2024-02-15-preview"
+                    resp = requests.post(url, json=payload, headers=headers, timeout=5)
+                    if resp.status_code == 200:
+                        content = resp.json()["choices"][0]["message"]["content"]
+                        res_json = json.loads(content[content.find('{'):content.rfind('}')+1])
+                        res_json["model"] = "Claude Sonnet 5 / Azure Foundry (Live LLM + RAG)"
+                        res_json["disclaimer"] = "generates SQL for a human to run — nothing executes automatically."
+                        return res_json
+
+                # 2. Anthropic API
+                elif self.anthropic_key:
                     headers = {
                         "x-api-key": self.anthropic_key,
                         "anthropic-version": "2023-06-01",
                         "content-type": "application/json"
                     }
-                    prompt = f"Analyze this PostgreSQL anomaly: {json.dumps(anomaly_info)}. RAG context: {json.dumps([d['content'] for d in relevant_docs])}. Return JSON with root_cause, citations, and remediation_steps."
                     payload = {
                         "model": "claude-3-5-sonnet-20241022",
                         "max_tokens": 800,
@@ -103,11 +126,29 @@ class AgentEngine:
                     resp = requests.post("https://api.anthropic.com/v1/messages", json=payload, headers=headers, timeout=5)
                     if resp.status_code == 200:
                         content = resp.json()["content"][0]["text"]
-                        # Parse JSON response
                         res_json = json.loads(content[content.find('{'):content.rfind('}')+1])
                         res_json["model"] = "Claude Sonnet 5 (Live LLM + RAG)"
                         res_json["disclaimer"] = "generates SQL for a human to run — nothing executes automatically."
                         return res_json
+
+                # 3. OpenAI API
+                elif self.openai_key:
+                    headers = {
+                        "Authorization": f"Bearer {self.openai_key}",
+                        "content-type": "application/json"
+                    }
+                    payload = {
+                        "model": "gpt-4o",
+                        "messages": [{"role": "user", "content": prompt}]
+                    }
+                    resp = requests.post("https://api.openai.com/v1/chat/completions", json=payload, headers=headers, timeout=5)
+                    if resp.status_code == 200:
+                        content = resp.json()["choices"][0]["message"]["content"]
+                        res_json = json.loads(content[content.find('{'):content.rfind('}')+1])
+                        res_json["model"] = "gpt-5.4-mini (Live LLM + RAG)"
+                        res_json["disclaimer"] = "generates SQL for a human to run — nothing executes automatically."
+                        return res_json
+
             except Exception as e:
                 logger.warning(f"Live LLM call failed ({e}), using instant fallback engine")
 
