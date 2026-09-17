@@ -78,30 +78,41 @@ def run_diagnosis():
         "diagnosis": diagnosis
     })
 
+@app.route("/api/next-incident-id", methods=["GET"])
+def get_next_incident_id():
+    inc_id = f"INC-00{len(incidents_db) + 458}"
+    return jsonify({
+        "success": True,
+        "next_incident_id": inc_id
+    })
+
 @app.route("/api/raise-incident", methods=["POST"])
 def raise_incident():
+    data = request.get_json(silent=True) or {}
     anomaly = db_monitor.get_active_anomaly()
     diagnosis = agent_engine.diagnose_anomaly(anomaly, db_monitor.poll_metrics())
     
-    inc_id = f"INC-00{len(incidents_db) + 458}"
+    inc_id = data.get("incident_id") or f"INC-00{len(incidents_db) + 458}"
     now_str = time.strftime("%H:%M:%S")
     
     incident = {
         "incident_id": inc_id,
-        "severity": "HIGH",
-        "title": anomaly.get("title", "PostgreSQL Database Anomaly") if anomaly else "DB Incident",
-        "database": anomaly.get("database", "PNCPRD01") if anomaly else "PNCPRD01",
-        "assigned_to": "DBA on-call",
-        "raised_by": "dbpulse agent",
+        "severity": data.get("severity", "HIGH"),
+        "title": data.get("title") or (anomaly.get("title", "PostgreSQL Database Anomaly") if anomaly else "DB Incident"),
+        "database": data.get("database") or (anomaly.get("database", "PNCPRD01") if anomaly else "PNCPRD01"),
+        "category": data.get("category", "Database - PostgreSQL Fleet"),
+        "assigned_to": data.get("assigned_to", "DBA on-call"),
+        "raised_by": data.get("raised_by", "dbpulse agent"),
         "created_at": now_str,
-        "root_cause": diagnosis.get("root_cause"),
-        "remediation_steps": diagnosis.get("remediation_steps")
+        "root_cause": data.get("root_cause") or diagnosis.get("root_cause"),
+        "remediation_steps": data.get("remediation_steps") or diagnosis.get("remediation_steps"),
+        "notes": data.get("notes", "")
     }
     incidents_db.append(incident)
     
     timeline_events.append({
         "timestamp": now_str,
-        "event": f"Incident raised {inc_id} (Assigned: DBA on-call)",
+        "event": f"Incident raised {inc_id} (Assigned: {incident['assigned_to']})",
         "type": "incident"
     })
     

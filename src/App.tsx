@@ -10,6 +10,8 @@ import { AgentPanel } from './components/AgentPanel';
 import type { DiagnosisData } from './components/AgentPanel';
 import { IncidentCard } from './components/IncidentCard';
 import type { IncidentData } from './components/IncidentCard';
+import { CreateIncidentPage } from './components/CreateIncidentPage';
+import { DbaConsolePanel } from './components/DbaConsolePanel';
 import { TimelineFooter } from './components/TimelineFooter';
 import type { TimelineEntry } from './components/TimelineFooter';
 import { DemoControls } from './components/DemoControls';
@@ -60,6 +62,9 @@ const DEFAULT_DIAGNOSIS: DiagnosisData = {
 };
 
 export function App() {
+  const [appMode, setAppMode] = useState<'agent' | 'dba'>('agent');
+  const [showAgentSuggestion, setShowAgentSuggestion] = useState<boolean>(false);
+  const [currentView, setCurrentView] = useState<'dashboard' | 'create-incident'>('dashboard');
   const [fleet, setFleet] = useState<FleetItem[]>(DEFAULT_FLEET);
   const [kpis, setKpis] = useState<KpiData>(DEFAULT_KPIS);
   const [anomaly, setAnomaly] = useState<AnomalyInfo | null>(DEFAULT_ANOMALY);
@@ -73,6 +78,29 @@ export function App() {
   const [lastPolledSecAgo, setLastPolledSecAgo] = useState(2);
   const [activeScenario, setActiveScenario] = useState('LOCK_CONTENTION');
   const [isDiagnosing, setIsDiagnosing] = useState(false);
+
+  // Hash-based back/forward routing support
+  useEffect(() => {
+    const handleHashChange = () => {
+      if (window.location.hash === '#create-incident') {
+        setCurrentView('create-incident');
+      } else {
+        setCurrentView('dashboard');
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    if (window.location.hash === '#create-incident') {
+      setCurrentView('create-incident');
+    }
+
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const handleNavigate = (view: 'dashboard' | 'create-incident') => {
+    setCurrentView(view);
+    window.location.hash = view === 'create-incident' ? '#create-incident' : '';
+  };
 
   // Poll backend API (with client fallback)
   useEffect(() => {
@@ -211,60 +239,82 @@ export function App() {
     setDiagnosis(null);
   };
 
-  // Raise Incident Action
-  const handleRaiseIncident = async () => {
+  const handleToggleMode = (mode: 'agent' | 'dba') => {
+    setAppMode(mode);
     const nowTime = new Date().toTimeString().split(' ')[0].substring(0, 5);
-
-    try {
-      const res = await fetch('/api/raise-incident', { method: 'POST' });
-      if (res.ok) {
-        const data = await res.json();
-        setIncident(data.incident);
-        setTimeline(prev => [
-          ...prev,
-          { timestamp: nowTime, event: `Incident raised ${data.incident.incident_id} (Assigned: DBA on-call)`, type: 'incident' }
-        ]);
-        return;
-      }
-    } catch {
-      // Fallback local raising
-    }
-
-    const fallbackInc: IncidentData = {
-      incident_id: `INC-00${Math.floor(Math.random() * 900) + 100}`,
-      severity: 'HIGH',
-      title: anomaly ? anomaly.title : 'Lock Contention on PNCPRD01',
-      database: anomaly ? anomaly.database : 'PNCPRD01',
-      assigned_to: 'DBA on-call',
-      raised_by: 'dbpulse agent',
-      created_at: nowTime
-    };
-
-    setIncident(fallbackInc);
     setTimeline(prev => [
       ...prev,
-      { timestamp: nowTime, event: `Incident raised ${fallbackInc.incident_id} (Assigned: DBA on-call)`, type: 'incident' }
+      {
+        timestamp: nowTime,
+        event: mode === 'dba'
+          ? 'Operational mode switched: DBA Manual Control (Hands-on SQL inspection active)'
+          : 'Operational mode switched: Agent Autonomous Mode (Proactive AI watcher active)',
+        type: 'control'
+      }
+    ]);
+  };
+
+  // Called when incident is finalized
+  const handleIncidentCreated = (newInc: IncidentData) => {
+    setIncident(newInc);
+    const nowTime = new Date().toTimeString().split(' ')[0].substring(0, 5);
+    setTimeline(prev => [
+      ...prev,
+      { timestamp: nowTime, event: `Incident registered ${newInc.incident_id} (Assigned: ${newInc.assigned_to})`, type: 'incident' }
     ]);
   };
 
   return (
     <div className="app-container">
-      <Header lastPolledSecAgo={lastPolledSecAgo} />
-      <FleetStrip fleet={fleet} />
-      <KpiRow kpis={kpis} />
-      <AnomalyBanner anomaly={anomaly} />
-      <AgentPanel
-        diagnosis={diagnosis}
-        onRaiseIncident={handleRaiseIncident}
-        incidentRaised={!!incident}
-        isDiagnosing={isDiagnosing}
+      <Header
+        lastPolledSecAgo={lastPolledSecAgo}
+        currentView={currentView}
+        onNavigate={handleNavigate}
+        appMode={appMode}
+        onToggleMode={handleToggleMode}
       />
-      <IncidentCard incident={incident} />
-      <DemoControls
-        activeScenario={activeScenario}
-        onSelectScenario={handleSelectScenario}
-        onReset={handleReset}
-      />
+
+      {currentView === 'create-incident' ? (
+        <CreateIncidentPage
+          anomaly={anomaly}
+          diagnosis={diagnosis}
+          fleet={fleet}
+          appMode={appMode}
+          onCancel={() => handleNavigate('dashboard')}
+          onIncidentCreated={handleIncidentCreated}
+        />
+      ) : (
+        <>
+          <FleetStrip fleet={fleet} />
+          <KpiRow kpis={kpis} />
+          <AnomalyBanner anomaly={anomaly} />
+
+          {appMode === 'agent' ? (
+            <AgentPanel
+              diagnosis={diagnosis}
+              onRaiseIncident={() => handleNavigate('create-incident')}
+              incidentRaised={!!incident}
+              isDiagnosing={isDiagnosing}
+            />
+          ) : (
+            <DbaConsolePanel
+              anomaly={anomaly}
+              diagnosis={diagnosis}
+              onCreateIncident={() => handleNavigate('create-incident')}
+              onConsultAgent={() => setShowAgentSuggestion(prev => !prev)}
+              showAgentSuggestion={showAgentSuggestion}
+            />
+          )}
+
+          <IncidentCard incident={incident} />
+          <DemoControls
+            activeScenario={activeScenario}
+            onSelectScenario={handleSelectScenario}
+            onReset={handleReset}
+          />
+        </>
+      )}
+
       <TimelineFooter timeline={timeline} />
     </div>
   );

@@ -52,8 +52,20 @@ class TestDBPulseBackend(unittest.TestCase):
         res_diag = self.app.post("/api/diagnose")
         self.assertEqual(res_diag.status_code, 200)
 
-        res_inc = self.app.post("/api/raise-incident")
+        res_next = self.app.get("/api/next-incident-id")
+        self.assertEqual(res_next.status_code, 200)
+        next_id = json.loads(res_next.data).get("next_incident_id")
+        self.assertTrue(next_id.startswith("INC-00"))
+
+        res_inc = self.app.post("/api/raise-incident", json={
+            "title": "Custom Test Incident",
+            "severity": "CRITICAL",
+            "database": "PNCPRD01"
+        })
         self.assertEqual(res_inc.status_code, 200)
+        inc_data = json.loads(res_inc.data)["incident"]
+        self.assertEqual(inc_data["title"], "Custom Test Incident")
+        self.assertEqual(inc_data["severity"], "CRITICAL")
 
 if __name__ == "__main__":
     unittest.main()
