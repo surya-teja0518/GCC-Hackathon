@@ -1,6 +1,6 @@
 # PNC GCC Hackathon — DB Reliability Agent (`dbpulse`)
 
-> **Proactive Postgres DB Reliability Agent**: Watches PostgreSQL KPIs, detects anomalies, performs RAG-grounded root-cause diagnosis in plain English, and drafts/raises incident tickets for DBA remediation — before customers notice impact.
+> **Proactive Postgres DB Reliability Agent**: Watches PostgreSQL KPIs, detects anomalies, performs RAG-grounded root-cause diagnosis in plain English, provides interactive DBA triage tooling, and handles end-to-end incident dispatching — before customers notice impact.
 
 ![Theme Fit](https://img.shields.io/badge/Theme-Business%20Impact%20%26%20Risk-blue)
 ![Secondary Fit](https://img.shields.io/badge/Theme-Engineering%20Velocity-green)
@@ -10,20 +10,41 @@
 
 ## 🚀 Key Features
 
-1. **Proactive Anomaly Detection**: Monitors PostgreSQL system views (`pg_stat_activity`, `pg_locks`, `pg_stat_database`) in real time across the database fleet (`PNCPRD01`, `RECON_DB`, `MBL_STG`).
-2. **RAG-Grounded Root Cause Diagnosis**: Grounds LLM reasoning (Claude Sonnet 5 / OpenAI / Foundry) with a specialized PostgreSQL wait-event knowledge base to explain root causes in plain English with source citations (`source: pg_stat_activity, pg_locks`).
-3. **Safety-First Action Drafting**: Generates copyable, step-by-step SQL remediation scripts (e.g. `pg_cancel_backend`, index recommendations). Follows strict safety principles (*"generates SQL for a human to run — nothing executes automatically"*).
-4. **90-Second Demo Loop**: Complete end-to-end flow: `Detect Anomaly → Diagnose Root Cause → Raise Incident (INC-00458)`.
-5. **Zero-Risk Fallback Engine**: Built-in synthetic database engine and cached diagnosis fallback ensure the application runs 100% out-of-the-box even without an active Postgres instance or external LLM API key.
+### 1. 🔄 Dual Operational Modes (Agent vs. DBA)
+Switch seamlessly via the top navigation bar between two operational paradigms:
+- **🤖 Agent Mode (Autonomous)**: The agent continuously monitors fleet telemetry, auto-detects KPI anomalies, performs RAG-grounded root cause diagnosis, auto-generates copyable SQL remediation scripts, and pre-populates enterprise incident reports for one-click dispatch.
+- **🛠️ DBA Mode (Manual Control & Workbench)**: Hands-on console for senior database administrators:
+  - **3 Query Profiles**: One-click session filters (`Lock Contention / pg_locks`, `Idle Connections / ClientRead`, `Table Scans / DataFileRead`).
+  - **Raw Session Table**: Detailed process inspector displaying PID, blocking chains, wait event, query duration, and query text.
+  - **Interactive SQL Workbench**: Editable query buffer allowing DBAs to test and dry-run administrative SQL (`SELECT pg_cancel_backend(...)`).
+  - **On-Demand AI Copilot**: **"🤖 Ask Agent for Suggestion"** button expands AI diagnostic recommendations and generated SQL without leaving manual mode.
+  - **Manual Incident Creation**: Direct button to author and dispatch custom incidents manually.
+
+### 2. 📋 Enterprise Incident Management (`#create-incident`)
+- **Dedicated Incident Creation Flow**: Full-screen dispatch form accessible from both Agent and DBA modes.
+- **Mode-Specific Badging**: Clearly marks incidents as either `AGENT AUTONOMOUS DISPATCH` (reported by `dbpulse AI Reliability Agent`) or `DBA MANUAL DISPATCH` (reported by `Human DBA Operations`).
+- **Sequential Incident IDs**: Real-time ID generator (`GET /api/next-incident-id`) issuing sequential incident tracking numbers (`INC-00459`, `INC-00460`, ...).
+- **Confirmation Receipts**: Instant receipt view with incident ID, priority badge, category, remediation action, and full audit timestamp.
+
+### 3. 🧠 RAG-Grounded Root Cause Diagnosis
+- Grounds LLM reasoning (Claude 3.5 Sonnet / GPT-4o / Azure AI Foundry) with a specialized PostgreSQL wait-event knowledge base.
+- Explains root causes in plain English with source citations (`source: pg_stat_activity, pg_locks`).
+- Strictly adheres to human-in-the-loop safety: **generates SQL for a human to review and execute — never executes destructive SQL autonomously**.
+
+### 4. 🐘 Modern PostgreSQL 16+ Telemetry Engine
+- Compatible with modern Postgres system catalogs: uses `cardinality(pg_blocking_pids(pid))` and `wait_event_type` (replaces deprecated `waiting` column) and groups cache hits by `datname`.
+- Fleet-aware architecture: monitors primary production node (`PNCPRD01`) alongside fleet peers (`RECON_DB`, `MBL_STG`).
+- Zero-risk fallback: built-in synthetic database engine and cached diagnosis fallback ensure the application runs 100% out-of-the-box even without a live database or cloud API key.
 
 ---
 
 ## 🎨 Visual Design System ("Terminal Glow")
 
-Dark technical console designed specifically for DBAs under incident pressure:
-- **Background**: `#14171C`
+Dark technical console designed specifically for database reliability engineers under incident pressure:
+- **Background**: `#14171C` (Deep slate)
 - **Agent Presence**: `#3FA9A0` (Teal glow & accents reserved strictly for AI presence)
-- **Risk Indicator**: `#D9643A` (Coral accent for anomaly signals)
+- **DBA Workbench**: `#E5A93C` (Warm amber accent reserved for human DBA manual control)
+- **Risk Indicator**: `#D9643A` (Coral accent for anomaly signals & blocking PIDs)
 - **Healthy Fleet**: `#5B8C6E` (Sage accent for healthy nodes)
 - **Typography**: `IBM Plex Sans` + `IBM Plex Mono`
 
@@ -33,24 +54,31 @@ Dark technical console designed specifically for DBAs under incident pressure:
 
 ```
 ├── backend/
-│   ├── app.py              # Flask server & REST API endpoints
-│   ├── db_monitor.py       # PostgreSQL queries & synthetic DB engine
+│   ├── app.py              # Flask server, REST APIs (/api/next-incident-id, /api/raise-incident)
+│   ├── db_monitor.py       # PostgreSQL 16+ queries & synthetic DB engine
 │   ├── rag_engine.py       # PostgreSQL wait event RAG knowledge base
 │   ├── agent.py            # AI diagnosis reasoning engine & fallback
-│   ├── test_backend.py     # Unit test suite for backend APIs
+│   ├── test_backend.py     # Unit test suite (fleet status, scenarios, incident generation)
 │   └── requirements.txt    # Python dependencies
 ├── src/
 │   ├── components/         # Modular React components
-│   │   ├── Header.tsx
-│   │   ├── FleetStrip.tsx
-│   │   ├── KpiRow.tsx
-│   │   ├── AnomalyBanner.tsx
-│   │   ├── AgentPanel.tsx
-│   │   ├── IncidentCard.tsx
-│   │   ├── DemoControls.tsx
-│   │   └── TimelineFooter.tsx
-│   ├── App.tsx             # Main single-page console layout
-│   └── index.css           # Global design tokens & terminal glow styles
+│   │   ├── Header.tsx             # Top bar with [🤖 Agent Mode] vs [🛠️ DBA Mode] pill switcher
+│   │   ├── FleetStrip.tsx         # Fleet node status (PNCPRD01, RECON_DB, MBL_STG)
+│   │   ├── KpiRow.tsx             # 4 live KPI cards (Lock Contention, Cache Hit, Idle, Commits)
+│   │   ├── AnomalyBanner.tsx      # Anomaly alert banner
+│   │   ├── AgentPanel.tsx         # Autonomous AI diagnosis, RAG grounding & remediation
+│   │   ├── DbaConsolePanel.tsx    # Manual DBA triage console, session inspector & SQL buffer
+│   │   ├── CreateIncidentPage.tsx # Dedicated incident creation page & success receipts
+│   │   ├── IncidentCard.tsx       # Staged incident card & dispatch trigger
+│   │   ├── DemoControls.tsx       # Anomaly scenario simulator (Lock Contention, Idle, Normal)
+│   │   └── TimelineFooter.tsx     # Fleet event timeline and audit trail
+│   ├── App.tsx             # Main dashboard layout & hash router (#create-incident)
+│   └── index.css           # Global design tokens, amber/teal accents & terminal glow styles
+├── mock_data/              # Enterprise banking test datasets (10,000+ records)
+│   ├── generate_mock_data.py # Data generator for recon records, audit logs & accounts
+│   ├── recon_records.csv   # Reconciliation transactions
+│   ├── audit_logs.csv      # Security & administrative audit logs
+│   └── account_balances.csv# Customer accounts & ledgers
 ├── design/
 │   └── reference.html      # Interactive standalone reference design
 └── package.json            # Node.js dependencies & scripts
@@ -75,7 +103,7 @@ pip install -r requirements.txt
 export POSTGRES_URL="postgresql://user:password@localhost:5432/postgres"
 export ANTHROPIC_API_KEY="your-key-here"
 
-# Run Flask backend server
+# Run Flask backend server (serves API on port 5000)
 python app.py
 ```
 
@@ -96,9 +124,17 @@ npm run dev
 
 ## 🧪 Testing
 
-Run python unit tests:
+### Backend Unit Tests
+Run the comprehensive backend test suite:
 ```bash
 python backend/test_backend.py
+```
+*Validates 3-node fleet architecture, scenario injection, dynamic sequential incident IDs, and custom incident payloads.*
+
+### Frontend Verification
+Run TypeScript type-check and build:
+```bash
+npm run build
 ```
 
 ---
