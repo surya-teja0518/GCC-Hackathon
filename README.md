@@ -113,12 +113,54 @@ python app.py
 # Install Node dependencies
 npm install
 
-# Build production React bundle
+# Build production React bundle (served directly by Flask at http://localhost:5000)
 npm run build
 
-# Or run Vite dev server for hot reload
+# Or run Vite dev server for hot reload (http://localhost:5173)
 npm run dev
 ```
+
+---
+
+## 🎮 How to Run & Test in Both Modes
+
+Once the app is running at `http://localhost:5000` (or `http://localhost:5173`), follow these steps to experience and evaluate both operational modes:
+
+### 🤖 Testing Mode 1: Agent Mode (Autonomous AI Operations)
+
+1. **Verify Mode**: Ensure **`[🤖 Agent Mode]`** is active in the top-right header (active by default with a teal glow).
+2. **Inject Anomaly**: In the bottom **Demo Controls** bar, click **"Lock Contention"** (or **"Idle Connections"**).
+3. **Observe Autonomous AI Triage**:
+   - The fleet strip and KPI row update in real time with anomaly metrics.
+   - The **Agent Reliability Copilot** immediately detects the anomaly, queries the wait-event RAG knowledge base, and displays a plain-English root cause analysis with system view citations (`pg_stat_activity`, `pg_locks`).
+   - A step-by-step copyable SQL remediation script (`SELECT pg_cancel_backend(...)`) is automatically drafted.
+4. **Dispatch Pre-Staged Incident**:
+   - Click **"Raise Incident"** on the staged Incident Card (or navigate to `#create-incident`).
+   - Notice the form is **automatically pre-populated** with the AI diagnosis, attached SQL fix, and marked with the **`AGENT AUTONOMOUS DISPATCH`** badge (Reporter: `dbpulse AI Reliability Agent`).
+   - Click **"Submit & Dispatch Incident"** to view the live confirmation receipt with an auto-generated sequential ID (e.g. `INC-00459`).
+
+---
+
+### 🛠️ Testing Mode 2: DBA Mode (Manual Control & Technical Workbench)
+
+1. **Switch Mode**: In the top navigation bar, click the toggle to switch to **`[🛠️ DBA Mode]`**.
+   - Notice the console shifts into an amber-accented technical workbench (`#E5A93C`) designed for senior database engineers.
+2. **Inspect Raw Session Telemetry**:
+   - Click through the 3 query profile tabs:
+     - `Lock Contention (pg_locks)` $\rightarrow$ shows blocking PIDs and waiting transaction queries.
+     - `Idle Connections (ClientRead)` $\rightarrow$ displays lingering idle application sessions.
+     - `Table Scans (DataFileRead)` $\rightarrow$ identifies queries reading heavily from disk.
+   - The **Raw Session Inspector** updates dynamically, highlighting root blocker processes in coral (`#D9643A`).
+3. **Use the Interactive SQL Workbench**:
+   - Review or edit the SQL script in the **Manual Remediation SQL Buffer**.
+   - Click **"▶ Run Query (Dry Run)"** to test administrative actions safely.
+4. **Consult the On-Demand AI Copilot**:
+   - Need AI assistance while staying in full manual control? Click **"🤖 Ask Agent for Suggestion"**.
+   - An on-demand copilot drawer opens with the RAG root-cause assessment and suggested SQL fix.
+5. **Create & Dispatch a Manual Incident**:
+   - Click **"+ Create Incident Manually"** (or click "Create Incident" in the header).
+   - The dispatch form opens in manual authoring mode, labeled with the **`DBA MANUAL DISPATCH`** badge (Reporter: `Human DBA Operations`).
+   - Fill in or adjust the title, priority, and notes, then click **"Submit & Dispatch Incident"** to view the confirmation receipt with a sequential ID (e.g. `INC-00460`).
 
 ---
 
@@ -142,3 +184,4 @@ npm run build
 ## 👥 Authors
 - **Surya Teja Vajjhala (CGI)**
 - Built for the **PNC GCC Hackathon**
+
