@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>dbpulse — Pitch Presentation Deck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #14171C;
+      --bg-card: #1C2026;
+      --text-primary: #E7E4DC;
+      --text-secondary: #8B9099;
+      --border-color: #2A2E35;
+      --agent-teal: #3FA9A0;
+      --agent-teal-glow: rgba(63, 169, 160, 0.2);
+      --risk-coral: #D9643A;
+      --risk-coral-bg: rgba(217, 100, 58, 0.12);
+      --healthy-sage: #5B8C6E;
+      --font-sans: 'IBM Plex Sans', sans-serif;
+      --font-mono: 'IBM Plex Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Slide Deck Navigation Header */
+    .deck-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 32px;
+      border-bottom: 1px solid var(--border-color);
+      background: rgba(20, 23, 28, 0.95);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      font-size: 18px;
+    }
+
+    .brand-badge {
+      font-size: 11px;
+      background: var(--agent-teal);
+      color: var(--bg-dark);
+      padding: 2px 8px;
+      border-radius: 3px;
+    }
+
+    .slide-counter {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    /* Slide Container */
+    .deck-body {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+    }
+
+    .slide {
+      display: none;
+      width: 100%;
+      max-width: 1000px;
+      height: 100%;
+      max-height: 560px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 48px;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+      animation: fadeIn 0.3s ease;
+    }
+
+    .slide.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .slide-header {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 16px;
+    }
+
+    .slide-tag {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      color: var(--agent-teal);
+      letter-spacing: 1px;
+    }
+
+    .slide-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .slide-content {
+      flex: 1;
+      padding: 24px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+
+    .slide-footer {
+      border-top: 1px solid var(--border-color);
+      padding-top: 16px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Speaker Notes Box */
+    .speaker-notes {
+      background: rgba(63, 169, 160, 0.08);
+      border-left: 3px solid var(--agent-teal);
+      padding: 12px 16px;
+      border-radius: 0 4px 4px 0;
+      font-size: 13px;
+      color: var(--text-primary);
+      line-height: 1.5;
+    }
+
+    .speaker-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--agent-teal);
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    /* Comparison Grid */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .card-box {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border-color);
+      padding: 20px;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .card-box.coral {
+      border-color: rgba(217, 100, 58, 0.4);
+    }
+
+    .card-box.teal {
+      border-color: rgba(63, 169, 160, 0.4);
+      box-shadow: 0 0 24px var(--agent-teal-glow);
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    ul.bullet-list {
+      list-style-type: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    ul.bullet-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    /* Key Metric Display */
+    .metric-badge {
+      font-family: var(--font-mono);
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--agent-teal);
+    }
+
+    /* Controls Bar */
+    .deck-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 32px;
+      border-top: 1px solid var(--border-color);
+      background: rgba(20, 23, 28, 0.95);
+    }
+
+    .btn-nav {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-nav:hover {
+      border-color: var(--agent-teal);
+      color: var(--agent-teal);
+    }
+
+    .btn-nav:disabled {
+      opacity: 0.4;
+      cursor: default;
+      border-color: var(--border-color);
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Deck Header -->
+  <div class="deck-header">
+    <div class="brand">
+      <span>dbpulse</span>
+      <span class="brand-badge">PNC GCC Hackathon</span>
+    </div>
+    <div class="slide-counter" id="slide-counter">Slide 1 of 8</div>
+  </div>
+
+  <!-- Deck Body -->
+  <div class="deck-body">
+
+    <!-- SLIDE 1 -->
+    <div class="slide active" id="slide-1">
+      <div class="slide-header">
+        <span class="slide-tag">PNC GCC Hackathon Pitch</span>
+        <h1 class="slide-title">dbpulse — Proactive Postgres Reliability Agent</h1>
+      </div>
+      <div class="slide-content">
+        <p style="font-size: 18px; color: var(--text-secondary);">
+          Catching, diagnosing, and resolving database incidents in under 90 seconds — before customers feel the impact.
+        </p>
+        <div class="grid-2" style="margin-top: 10px;">
+          <div class="card-box teal">
+            <div class="card-title" style="color: var(--agent-teal);">Primary Theme Fit</div>
+            <p style="font-size: 14px;"><strong>Business Impact & Risk</strong>: Resolving database lock contention and connection pool exhaustion before user transaction failures.</p>
+          </div>
+          <div class="card-box">
+            <div class="card-title">Secondary Theme Fit</div>
+            <p style="font-size: 14px;"><strong>Engineering Velocity</strong>: Resilient AI-by-design architecture automating repetitive DBA triage.</p>
+          </div>
+        </div>
+      </div>
+      <div class="speaker-notes">
+        <div class="speaker-label">SPEAKER SCRIPT (30s):</div>
+        "Good morning judges. We are excited to present <strong>dbpulse</strong> — a proactive AI database reliability agent designed to catch, diagnose, and resolve database incidents before customers ever feel the impact. In enterprise banking, database outages start silently: an uncommitted row lock or connection leak. dbpulse turns passive monitoring into an autonomous AI agent."
+      </div>
+      <div class="slide-footer">
+        <span>Team: Surya Teja Vajjhala (CGI) & Teammate</span>
+        <span>Target Demo: 90 Seconds</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 2 -->
+    <div class="slide" id="slide-2">
+      <div class="slide-header">
+        <span class="slide-tag">The Problem</span>
+        <h1 class="slide-title">Passive Monitoring vs. Enterprise Business Risk</h1>
+      </div>
+      <div class="slide-content">
+        <div class="grid-2">
+          <div class="card-box coral">
+            <div class="card-title" style="color: var(--risk-coral);">Traditional Dashboards (Reactive)</div>
+            <ul class="bullet-list">
+              <li>❌ Alerts fire <em>after</em> thresholds breach.</li>
+              <li>❌ DBAs spend 15–30 mins querying system tables under pressure.</li>
+              <li>❌ Customer impact: checkout timeouts, high MTTR, revenue risk.</li>
+            </ul>
+          </div>
+          <div class="card-box teal">
+            <div class="card-title" style="color: var(--agent-teal);">dbpulse Proactive Agent</div>
+            <ul class="bullet-list">
+              <li>✅ Real-time telemetry monitoring across fleet.</li>
+              <li>✅ RAG-grounded instant plain-English root cause.</li>
+              <li>✅ Automated incident ticket with copyable SQL remediation attached.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="speaker-notes">
+        <div class="speaker-label">SPEAKER SCRIPT (30s):</div>
+        "Traditional monitoring dashboards are passive — they tell you something is broken, but leave the investigation to a human under pressure. A DBA spends 15 to 30 minutes manually identifying blocking PIDs. In financial services, 15 minutes of row lock contention means thousands of failed customer transactions."
+      </div>
+      <div class="slide-footer">
+        <span>Problem Statement</span>
+        <span>MTTR: 15-30 mins → 90 secs</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 3 -->
+    <div class="slide" id="slide-3">
+      <div class="slide-header">
+        <span class="slide-tag">The Solution</span>
+        <h1 class="slide-title">Autonomous Loop: Detect → Diagnose → Act</h1>
+      </div>
+      <div class="slide-content">
+        <div class="card-box teal">
+          <div class="card-title" style="color: var(--agent-teal);">Agentic Workflow</div>
+          <p style="font-size: 14px; line-height: 1.6;">
+            1. <strong>Detect</strong>: Continuous telemetry polling of <code>pg_stat_activity</code>, <code>pg_locks</code>, & <code>pg_stat_database</code>.<br>
+            2. <strong>Diagnose</strong>: Retrieves wait-event RAG knowledge + invokes Claude Sonnet 5 via Azure AI Foundry.<br>
+            3. <strong>Act</strong>: Raises incident ticket (<code>INC-00458</code>) with pre-formulated, copyable SQL remediation scripts.
+          </p>
+        </div>
+        <div style="background: rgba(255, 255, 255, 0.03); padding: 12px 16px; border-radius: 4px; border: 1px dashed var(--agent-teal); font-family: var(--font-mono); font-size: 12px; color: var(--agent-teal);">
+          🛡 Safety Guardrail: "generates SQL for a human to run — nothing executes automatically."
+        </div>
+      </div>
+      <div class="speaker-notes">
+        <div class="speaker-label">SPEAKER SCRIPT (45s):</div>
+        "dbpulse continuously watches PostgreSQL telemetry. When an anomaly occurs, it retrieves domain troubleshooting guidance via RAG, invokes Claude Sonnet 5 on Azure AI Foundry to explain the root cause, and drafts an incident ticket with exact remediation SQL. Crucially, we follow a strict safety guardrail: dbpulse generates SQL for a human DBA to execute — nothing mutates production databases automatically."
+      </div>
+      <div class="slide-footer">
+        <span>Safety First</span>
+        <span>Human-in-the-Loop Governance</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 4 -->
+    <div class="slide" id="slide-4">
+      <div class="slide-header">
+        <span class="slide-tag">Live Demonstration</span>
+        <h1 class="slide-title">The 90-Second Money Moment</h1>
+      </div>
+      <div class="slide-content">
+        <ul class="bullet-list" style="font-size: 15px;">
+          <li><strong>00:00 — Baseline</strong>: Console displays healthy fleet (<code>PNCPRD01</code>, <code>RECON_DB</code>, <code>MBL_STG</code>).</li>
+          <li><strong>00:15 — Anomaly</strong>: Trigger Row Lock Contention on <code>public.orders</code>. <code>PNCPRD01</code> turns coral (<code>RISK 88/100</code>).</li>
+          <li><strong>00:40 — Diagnosis</strong>: Agent panel populates with root cause explanation, <code>pg_stat_activity</code> citations, and copyable safe cancellation SQL (<code>SELECT pg_cancel_backend(48219)</code>).</li>
+          <li><strong>00:70 — Incident Ticket</strong>: One-click "Raise Incident Ticket" creates <code>INC-00458</code> assigned to DBA on-call.</li>
+        </ul>
+      </div>
+      <div class="speaker-notes">
+        <div class="speaker-label">SPEAKER SCRIPT (90s Demo Run):</div>
+        "Let's look at the live demo. Our console shows healthy databases. Now we simulate an uncommitted transaction holding a row lock on public.orders. Immediately, dbpulse flags the anomaly. Within seconds, the agent panel populates explaining PID 48219 is holding the lock, providing copyable safe cancellation SQL. With one click, we raise incident INC-00458 for the DBA. All under 90 seconds."
+      </div>
+      <div class="slide-footer">
+        <span>Live Demo</span>
+        <span>End-to-End Loop</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 5 -->
+    <div class="slide" id="slide-5">
+      <div class="slide-header">
+        <span class="slide-tag">Architecture</span>
+        <h1 class="slide-title">Azure Stack & Lean Engineering</h1>
+      </div>
+      <div class="slide-content">
+        <div class="grid-2">
+          <div class="card-box">
+            <div class="card-title">Backend & Database</div>
+            <ul class="bullet-list">
+              <li>Python Flask REST API (Single-process server).</li>
+              <li>Azure Database for PostgreSQL (Flexible Server).</li>
+              <li>Queries <code>pg_stat_activity</code> & <code>pg_locks</code>.</li>
+            </ul>
+          </div>
+          <div class="card-box">
+            <div class="card-title">AI Reasoning & Fallback</div>
+            <ul class="bullet-list">
+              <li>Azure AI Foundry (Claude Sonnet 5 / <code>gpt-5.4-mini</code>).</li>
+              <li>PostgreSQL Wait-Event RAG Knowledge Base.</li>
+              <li>Built-in deterministic fallback engine for 100% demo uptime.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="speaker-notes">
+        <div class="speaker-label">SPEAKER SCRIPT (30s):</div>
+        "Behind the scenes, dbpulse runs on a lean stack. The backend is Python Flask querying Azure PostgreSQL system views. The AI engine leverages Azure AI Foundry running Claude Sonnet 5, grounded by our wait-event RAG knowledge base. The frontend is a dark technical console built with React."
+      </div>
+      <div class="slide-footer">
+        <span>Hosted on Azure</span>
+        <span>Zero Third-Party Server Dependencies</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 6 -->
+    <div class="slide" id="slide-6">
+      <div class="slide-header">
+        <span class="slide-tag">Enterprise Vision</span>
+        <h1 class="slide-title">Product Depth & Data Integrity</h1>
+      </div>
+      <div class="slide-content">
+        <div class="grid-2">
+          <div class="card-box">
+            <div class="card-title">Product Roadmap Vision</div>
+            <ul class="bullet-list">
+              <li>Fleet-wide heatmaps & multi-cluster drilldowns.</li>
+              <li>DBA feedback loop (upvote/downvote tuning).</li>
+              <li>Automated post-mortem summary generation.</li>
+            </ul>
+          </div>
+          <div class="card-box teal">
+            <div class="card-title" style="color: var(--agent-teal);">Data & IP Compliance</div>
+            <ul class="bullet-list">
+              <li>100% fresh, independently-authored open source code.</li>
+              <li>Built against synthetic banking datasets (<code>testdb</code>).</li>
+              <li>Zero proprietary PNC code or schema reused.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="speaker-notes">
+        <div class="speaker-label">SPEAKER SCRIPT (30s):</div>
+        "Our broader product vision includes fleet-wide heatmaps and a DBA feedback loop where engineers can refine RAG parameters. All code presented today is 100% fresh, original code built during this hackathon using synthetic datasets."
+      </div>
+      <div class="slide-footer">
+        <span>Clean Code</span>
+        <span>Synthetic Postgres Telemetry</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 7 -->
+    <div class="slide" id="slide-7">
+      <div class="slide-header">
+        <span class="slide-tag">Business Impact</span>
+        <h1 class="slide-title">Quantifiable Enterprise Risk Reduction</h1>
+      </div>
+      <div class="slide-content">
+        <div class="grid-2" style="align-items: center;">
+          <div>
+            <div class="metric-badge">10x Faster</div>
+            <p style="font-size: 16px; color: var(--text-secondary); margin-bottom: 16px;">MTTR reduced from 15–30 mins to &lt;90 secs.</p>
+          </div>
+          <div class="card-box teal">
+            <div class="card-title" style="color: var(--agent-teal);">Key Outcomes</div>
+            <ul class="bullet-list">
+              <li>🛡 <strong>Risk Mitigation</strong>: Eliminates cascading lock contentions before user checkout impact.</li>
+              <li>🚀 <strong>Engineering Velocity</strong>: Automates repetitive triage so senior DBAs focus on core architecture.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="speaker-notes">
+        <div class="speaker-label">SPEAKER SCRIPT (30s):</div>
+        "The business impact of dbpulse is immediate: It reduces MTTR from 15 minutes to 90 seconds, directly protects customer checkout experience by catching locks before timeouts, and boosts engineering velocity by delivering root causes directly to DBAs."
+      </div>
+      <div class="slide-footer">
+        <span>Business Impact</span>
+        <span>Risk & Velocity fit</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 8 -->
+    <div class="slide" id="slide-8">
+      <div class="slide-header">
+        <span class="slide-tag">Conclusion</span>
+        <h1 class="slide-title">Thank You — Questions & Discussion</h1>
+      </div>
+      <div class="slide-content" style="text-align: center; justify-content: center;">
+        <h2 style="font-size: 24px; color: var(--agent-teal); margin-bottom: 12px;">dbpulse (PULSE-AI)</h2>
+        <p style="font-size: 16px; color: var(--text-secondary); margin-bottom: 20px;">Proactive PostgreSQL Reliability Agent</p>
+        <div style="font-family: var(--font-mono); font-size: 13px; color: var(--text-primary); background: rgba(0,0,0,0.3); padding: 12px; border-radius: 4px; display: inline-block; margin: 0 auto;">
+          GitHub: github.com/surya-teja0518/GCC-Hackathon
+        </div>
+      </div>
+      <div class="speaker-notes">
+        <div class="speaker-label">SPEAKER SCRIPT (15s):</div>
+        "Thank you judges! dbpulse bridges the gap between AI innovation and mission-critical database reliability. We welcome your questions."
+      </div>
+      <div class="slide-footer">
+        <span>PNC GCC Hackathon Entry</span>
+        <span>Surya Teja Vajjhala (CGI) & Teammate</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Deck Controls -->
+  <div class="deck-controls">
+    <button class="btn-nav" id="btn-prev" onclick="prevSlide()">← Previous</button>
+    <span style="font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary);">Use ← / → Arrow Keys to Navigate</span>
+    <button class="btn-nav" id="btn-next" onclick="nextSlide()">Next →</button>
+  </div>
+
+  <script>
+    let currentSlide = 1;
+    const totalSlides = 8;
+
+    function updateSlide() {
+      for (let i = 1; i <= totalSlides; i++) {
+        const el = document.getElementById(`slide-${i}`);
+        if (el) el.classList.remove('active');
+      }
+      const activeEl = document.getElementById(`slide-${currentSlide}`);
+      if (activeEl) activeEl.classList.add('active');
+
+      document.getElementById('slide-counter').innerText = `Slide ${currentSlide} of ${totalSlides}`;
+      document.getElementById('btn-prev').disabled = (currentSlide === 1);
+      document.getElementById('btn-next').disabled = (currentSlide === totalSlides);
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides) {
+        currentSlide++;
+        updateSlide();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 1) {
+        currentSlide--;
+        updateSlide();
+      }
+    }
+
+    // Keyboard Arrow Controls
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'Space') {
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        prevSlide();
+      }
+    });
+
+    // Initialize
+    updateSlide();
+  </script>
+</body>
+</html>
