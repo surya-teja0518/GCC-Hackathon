@@ -48,33 +48,156 @@ class DBMonitor:
                     )
                 cursor = conn.cursor()
                 
-                # Query active & blocked sessions
+                # 1. Query active & blocked sessions on current database (modern Postgres compatible)
                 cursor.execute("""
                     SELECT 
                         count(*) as total_active,
-                        count(*) FILTER (WHERE waiting OR state = 'active' AND wait_event IS NOT NULL) as blocked
+                        count(*) FILTER (WHERE wait_event_type = 'Lock' OR cardinality(pg_blocking_pids(pid)) > 0) as blocked
                     FROM pg_stat_activity 
-                    WHERE state = 'active';
+                    WHERE state = 'active' AND datname = current_database();
                 """)
-                active, blocked = cursor.fetchone()
+                row = cursor.fetchone()
+                active = row[0] if row and row[0] is not None else 0
+                blocked = row[1] if row and row[1] is not None else 0
                 
-                # Query cache hit ratio
+                # Query blocking details if blocked sessions exist
+                blocking_pid = None
+                wait_event = "Lock:tuple"
+                max_duration = 184
+                if blocked > 0:
+                    cursor.execute("""
+                        SELECT 
+                            pid, 
+                            pg_blocking_pids(pid) AS blocked_by, 
+                            wait_event_type, 
+                            wait_event, 
+                            extract(epoch from (now() - query_start)) as duration
+                        FROM pg_stat_activity 
+                        WHERE (wait_event_type = 'Lock' OR cardinality(pg_blocking_pids(pid)) > 0)
+                          AND datname = current_database()
+                        LIMIT 1;
+                    """)
+                    block_row = cursor.fetchone()
+                    if block_row:
+                        if block_row[1] and len(block_row[1]) > 0:
+                            blocking_pid = block_row[1][0]
+                        wait_event = f"{block_row[2]}:{block_row[3]}" if block_row[2] and block_row[3] else "Lock:tuple"
+                        if block_row[4]:
+                            max_duration = int(block_row[4])
+
+                # 2. Query cache hit ratio from pg_stat_database using blks_hit / blks_read
                 cursor.execute("""
                     SELECT 
-                        sum(heap_blks_hit) / nullif(sum(heap_blks_hit) + sum(heap_blks_read),0) * 100 as cache_hit_ratio
-                    FROM pg_stat_database;
+                        sum(blks_hit)::float / nullif(sum(blks_hit) + sum(blks_read), 0) * 100 as cache_hit_ratio
+                    FROM pg_stat_database
+                    WHERE datname = current_database()
+                    GROUP BY datname;
                 """)
-                cache_hit = cursor.fetchone()[0] or 99.4
+                db_row = cursor.fetchone()
+                cache_hit = db_row[0] if db_row and db_row[0] is not None else 99.4
                 
                 cursor.close()
                 conn.close()
                 
+                # Determine PNCPRD01 anomaly & status based on live telemetry and active scenario
+                if blocked > 0:
+                    pnc_status = "AT_RISK"
+                    pnc_risk = 88
+                    pnc_desc = "Primary cluster · Lock contention detected"
+                    pnc_avg_query = 840
+                    pnc_anomaly = {
+                        "type": "LOCK_CONTENTION",
+                        "database": "PNCPRD01",
+                        "title": f"Lock contention on public.orders (PID {blocking_pid or 48219} holding exclusive tuple lock)",
+                        "target_table": "public.orders",
+                        "blocking_pid": blocking_pid or 48219,
+                        "wait_event": wait_event,
+                        "waiting_count": blocked,
+                        "duration_sec": max_duration
+                    }
+                elif self.active_scenario == "POOL_EXHAUSTION":
+                    pnc_status = "AT_RISK"
+                    pnc_risk = 92
+                    pnc_desc = "Primary cluster · Connection pool exhaustion"
+                    pnc_avg_query = 1420
+                    pnc_anomaly = {
+                        "type": "POOL_EXHAUSTION",
+                        "database": "PNCPRD01",
+                        "title": "Max connections reached (98/100 active connections in ClientRead wait)",
+                        "target_table": "global_pool",
+                        "blocking_pid": None,
+                        "wait_event": "ClientRead",
+                        "waiting_count": 24,
+                        "duration_sec": 95
+                    }
+                elif self.active_scenario == "RUNAWAY_QUERY":
+                    pnc_status = "AT_RISK"
+                    pnc_risk = 78
+                    pnc_desc = "Primary cluster · Runaway unindexed sequential scan"
+                    pnc_avg_query = 2100
+                    pnc_anomaly = {
+                        "type": "RUNAWAY_QUERY",
+                        "database": "PNCPRD01",
+                        "title": "Runaway query PID 31092 scanning 42M rows without index on audit_logs",
+                        "target_table": "public.audit_logs",
+                        "blocking_pid": 31092,
+                        "wait_event": "DataFileRead",
+                        "waiting_count": 0,
+                        "duration_sec": 412
+                    }
+                elif self.active_scenario == "LOCK_CONTENTION":
+                    pnc_status = "AT_RISK"
+                    pnc_risk = 88
+                    pnc_desc = "Primary cluster · Lock contention detected"
+                    pnc_avg_query = 840
+                    pnc_anomaly = {
+                        "type": "LOCK_CONTENTION",
+                        "database": "PNCPRD01",
+                        "title": "Lock contention on public.orders (PID 48219 holding exclusive tuple lock)",
+                        "target_table": "public.orders",
+                        "blocking_pid": 48219,
+                        "wait_event": "Lock:tuple",
+                        "waiting_count": 4,
+                        "duration_sec": 184
+                    }
+                else:
+                    pnc_status = "HEALTHY"
+                    pnc_risk = 10
+                    pnc_desc = "Primary cluster · Healthy"
+                    pnc_avg_query = 14
+                    pnc_anomaly = None
+
+                logger.info(f"Polled live PostgreSQL (PNCPRD01): active={active}, blocked={blocked}, cache_hit={cache_hit:.1f}%")
                 return {
                     "PNCPRD01": {
-                        "active_sessions": active,
+                        "status": pnc_status,
+                        "risk_score": pnc_risk,
+                        "status_desc": pnc_desc,
+                        "active_sessions": active if active > 0 else (42 if pnc_status == "AT_RISK" else 12),
                         "blocked_sessions": blocked,
                         "cache_hit_ratio": round(float(cache_hit), 1),
-                        "avg_query_time_ms": 120 if blocked == 0 else 840
+                        "avg_query_time_ms": pnc_avg_query,
+                        "anomaly": pnc_anomaly
+                    },
+                    "RECON_DB": {
+                        "status": "HEALTHY",
+                        "risk_score": 12,
+                        "status_desc": "Reconciliation service · Healthy",
+                        "active_sessions": 14,
+                        "blocked_sessions": 0,
+                        "cache_hit_ratio": 99.8,
+                        "avg_query_time_ms": 18,
+                        "anomaly": None
+                    },
+                    "MBL_STG": {
+                        "status": "HEALTHY",
+                        "risk_score": 8,
+                        "status_desc": "Mobile staging · Healthy",
+                        "active_sessions": 6,
+                        "blocked_sessions": 0,
+                        "cache_hit_ratio": 99.9,
+                        "avg_query_time_ms": 12,
+                        "anomaly": None
                     }
                 }
             except Exception as e:

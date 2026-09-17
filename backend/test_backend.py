@@ -40,6 +40,8 @@ class TestDBPulseBackend(unittest.TestCase):
     def test_flask_routes(self):
         res_fleet = self.app.get("/api/fleet")
         self.assertEqual(res_fleet.status_code, 200)
+        fleet_data = json.loads(res_fleet.data)
+        self.assertEqual(len(fleet_data["fleet"]), 3)
 
         res_kpis = self.app.get("/api/kpis?db=PNCPRD01")
         self.assertEqual(res_kpis.status_code, 200)

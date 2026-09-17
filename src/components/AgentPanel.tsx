@@ -99,7 +99,7 @@ export const AgentPanel: React.FC<AgentPanelProps> = ({
           onClick={onRaiseIncident}
           disabled={incidentRaised}
         >
-          {incidentRaised ? 'Incident Raised ✓' : 'Raise Incident Ticket'}
+          {incidentRaised ? 'Incident Raised ✓' : 'Raise Incident'}
         </button>
       </div>
     </div>

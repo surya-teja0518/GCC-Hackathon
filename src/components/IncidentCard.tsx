@@ -21,14 +21,14 @@ export const IncidentCard: React.FC<IncidentCardProps> = ({ incident }) => {
   return (
     <div className="incident-card">
       <div className="incident-header">
-        <span className="incident-id">{incident.incident_id} — Ticket Created</span>
+        <span className="incident-id">{incident.incident_id} — Incident Created</span>
         <span className="severity-badge">{incident.severity} SEVERITY</span>
       </div>
       <div className="incident-meta">
         Assigned: {incident.assigned_to} · Raised by: {incident.raised_by} · Database: {incident.database}
       </div>
       <p style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
-        {incident.title}. Diagnostic and remediation queries automatically attached to ticket.
+        {incident.title}. Diagnostic and remediation queries automatically attached to incident.
       </p>
     </div>
   );

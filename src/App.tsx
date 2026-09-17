@@ -41,7 +41,7 @@ const DEFAULT_ANOMALY: AnomalyInfo = {
 };
 
 const DEFAULT_DIAGNOSIS: DiagnosisData = {
-  model: 'Claude Sonnet 5 (RAG Grounded)',
+  model: 'Claude 3.5 Sonnet (RAG Grounded)',
   root_cause: 'Session PID 48219 has held an uncommitted row lock on table public.orders for over 180s during a bulk update batch. This block is cascading to 4 subsequent transactions attempting write locks on the same partition.',
   citations: 'source: pg_stat_activity, pg_locks',
   remediation_steps: [
@@ -68,7 +68,7 @@ export function App() {
   const [timeline, setTimeline] = useState<TimelineEntry[]>([
     { timestamp: '14:00:00', event: 'Fleet monitoring initialized', type: 'system' },
     { timestamp: '14:02:15', event: 'PNCPRD01: Anomaly detected (Lock Contention)', type: 'anomaly' },
-    { timestamp: '14:02:18', event: 'PNCPRD01 diagnosed by dbpulse (Claude Sonnet 5)', type: 'diagnosis' }
+    { timestamp: '14:02:18', event: 'PNCPRD01 diagnosed by dbpulse (Claude 3.5 Sonnet)', type: 'diagnosis' }
   ]);
   const [lastPolledSecAgo, setLastPolledSecAgo] = useState(2);
   const [activeScenario, setActiveScenario] = useState('LOCK_CONTENTION');
@@ -152,7 +152,7 @@ export function App() {
           target_table: 'global_pool'
         });
         setDiagnosis({
-          model: 'Claude Sonnet 5 (RAG Grounded)',
+          model: 'Claude 3.5 Sonnet (RAG Grounded)',
           root_cause: 'Active connection count reached 98/100 limit on PNCPRD01 due to connection pool leakage from application workers.',
           citations: 'source: pg_stat_activity, pg_stat_database',
           remediation_steps: [
@@ -175,7 +175,7 @@ export function App() {
           target_table: 'public.audit_logs'
         });
         setDiagnosis({
-          model: 'Claude Sonnet 5 (RAG Grounded)',
+          model: 'Claude 3.5 Sonnet (RAG Grounded)',
           root_cause: 'Runaway query PID 31092 scanning 42M rows sequentially on public.audit_logs due to missing predicate index.',
           citations: 'source: pg_stat_activity, DataFileRead wait events',
           remediation_steps: [

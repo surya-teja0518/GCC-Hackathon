@@ -6,7 +6,7 @@ logger = logging.getLogger("agent")
 
 FALLBACK_DIAGNOSES = {
     "LOCK_CONTENTION": {
-        "model": "Claude Sonnet 5 (RAG Grounded)",
+        "model": "Claude 3.5 Sonnet (RAG Grounded)",
         "root_cause": "Session PID 48219 has held an uncommitted row lock on table public.orders for over 180 seconds during a bulk update operation. This block is cascading to 4 subsequent transactions attempting write locks on the same tuple.",
         "citations": "source: pg_stat_activity, pg_locks",
         "remediation_steps": [
@@ -24,7 +24,7 @@ FALLBACK_DIAGNOSES = {
         "disclaimer": "generates SQL for a human to run — nothing executes automatically."
     },
     "POOL_EXHAUSTION": {
-        "model": "Claude Sonnet 5 (RAG Grounded)",
+        "model": "Claude 3.5 Sonnet (RAG Grounded)",
         "root_cause": "Active connection count reached 98/100 limit on PNCPRD01. Application microservices are leaking idle-in-transaction sessions, causing incoming client requests to wait on ClientRead event.",
         "citations": "source: pg_stat_activity, pg_stat_database",
         "remediation_steps": [
@@ -42,7 +42,7 @@ FALLBACK_DIAGNOSES = {
         "disclaimer": "generates SQL for a human to run — nothing executes automatically."
     },
     "RUNAWAY_QUERY": {
-        "model": "Claude Sonnet 5 (RAG Grounded)",
+        "model": "Claude 3.5 Sonnet (RAG Grounded)",
         "root_cause": "Runaway query PID 31092 executing full sequential table scan across 42 Million rows on public.audit_logs due to missing predicate index on payload column.",
         "citations": "source: pg_stat_activity, DataFileRead wait events",
         "remediation_steps": [
@@ -103,11 +103,11 @@ class AgentEngine:
                     url = self.azure_foundry_endpoint
                     if "/chat/completions" not in url:
                         url = f"{url.rstrip('/')}/chat/completions?api-version=2024-02-15-preview"
-                    resp = requests.post(url, json=payload, headers=headers, timeout=5)
+                    resp = requests.post(url, json=payload, headers=headers, timeout=20)
                     if resp.status_code == 200:
                         content = resp.json()["choices"][0]["message"]["content"]
                         res_json = json.loads(content[content.find('{'):content.rfind('}')+1])
-                        res_json["model"] = "Claude Sonnet 5 / Azure Foundry (Live LLM + RAG)"
+                        res_json["model"] = "Azure AI Foundry (Live LLM + RAG)"
                         res_json["disclaimer"] = "generates SQL for a human to run — nothing executes automatically."
                         return res_json
 
@@ -123,11 +123,11 @@ class AgentEngine:
                         "max_tokens": 800,
                         "messages": [{"role": "user", "content": prompt}]
                     }
-                    resp = requests.post("https://api.anthropic.com/v1/messages", json=payload, headers=headers, timeout=5)
+                    resp = requests.post("https://api.anthropic.com/v1/messages", json=payload, headers=headers, timeout=20)
                     if resp.status_code == 200:
                         content = resp.json()["content"][0]["text"]
                         res_json = json.loads(content[content.find('{'):content.rfind('}')+1])
-                        res_json["model"] = "Claude Sonnet 5 (Live LLM + RAG)"
+                        res_json["model"] = "Claude 3.5 Sonnet (Live LLM + RAG)"
                         res_json["disclaimer"] = "generates SQL for a human to run — nothing executes automatically."
                         return res_json
 
@@ -141,11 +141,11 @@ class AgentEngine:
                         "model": "gpt-4o",
                         "messages": [{"role": "user", "content": prompt}]
                     }
-                    resp = requests.post("https://api.openai.com/v1/chat/completions", json=payload, headers=headers, timeout=5)
+                    resp = requests.post("https://api.openai.com/v1/chat/completions", json=payload, headers=headers, timeout=20)
                     if resp.status_code == 200:
                         content = resp.json()["choices"][0]["message"]["content"]
                         res_json = json.loads(content[content.find('{'):content.rfind('}')+1])
-                        res_json["model"] = "gpt-5.4-mini (Live LLM + RAG)"
+                        res_json["model"] = "GPT-4o (Live LLM + RAG)"
                         res_json["disclaimer"] = "generates SQL for a human to run — nothing executes automatically."
                         return res_json
 
